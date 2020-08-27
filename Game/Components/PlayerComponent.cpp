@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "PlayerComponent.h"
-#include "Components/PhysicsComponent.h"
+#include "Components/RigidBodyComponent.h"
 #include "Objects/GameObject.h"
+#include "Components/AudioComponent.h"
 
 bool nc::PlayerComponent::Create(void* data)
 {
@@ -16,27 +17,42 @@ void nc::PlayerComponent::Destroy()
 
 void nc::PlayerComponent::Update()
 {
+    auto contacts = m_owner->GetContactsWithTag("Floor");
+    bool onGround = !contacts.empty();
+
+    nc::Vector2 force{ 0, 0 };
     if (m_owner->m_engine->GetSystem<nc::InputSystem>()->GetButtonState(SDL_SCANCODE_LEFT) == nc::InputSystem::eButtonState::HELD)
     {
-        m_owner->m_transform.angle = m_owner->m_transform.angle - 200.0f * m_owner->m_engine->GetTimer().DeltaTime();
+        force.x = -100;
     }
     if (m_owner->m_engine->GetSystem<nc::InputSystem>()->GetButtonState(SDL_SCANCODE_RIGHT) == nc::InputSystem::eButtonState::HELD)
     {
-        m_owner->m_transform.angle = m_owner->m_transform.angle + 200.0f * m_owner->m_engine->GetTimer().DeltaTime();
+        force.x = 100;
     }
 
-    //set force
-    nc::Vector2 force{ 0, 0 };
-    if (m_owner->m_engine->GetSystem<nc::InputSystem>()->GetButtonState(SDL_SCANCODE_UP) == nc::InputSystem::eButtonState::HELD)
+    if (onGround && m_owner->m_engine->GetSystem<nc::InputSystem>()->GetButtonState(SDL_SCANCODE_SPACE) == nc::InputSystem::eButtonState::HELD)
     {
-        force = nc::Vector2::forward * 1000.0f;
+        force.y = -600;
+        AudioComponent* audioComponent = m_owner->GetComponent<AudioComponent>();
+        if (audioComponent)
+        {
+            audioComponent->Play();
+        }
+
     }
-    force = nc::Vector2::Rotate(force, nc::DegreesToRadians(m_owner->m_transform.angle));
 
     //apply force
-    PhysicsComponent* component = m_owner->GetComponent<PhysicsComponent>();
+    RigidBodyComponent* component = m_owner->GetComponent<RigidBodyComponent>();
     if (component)
     {
         component->ApplyForce(force);
     }
+
+    //check for coin contact
+    auto coinContacts = m_owner->GetContactsWithTag("Coin");
+    for (GameObject* contact : coinContacts)
+    {
+        contact->m_flags[GameObject::eFlags::DESTROY] = true;
+    }
+
 }

@@ -14,6 +14,7 @@ bool nc::json::Load(const std::string& filename, rapidjson::Document& document)
         rapidjson::IStreamWrapper istream(stream); 
         document.ParseStream(istream);
         success = document.IsObject();
+        ASSERT_MSG(success, "Error json is not valid: " + filename);
     }
 
     return success;
